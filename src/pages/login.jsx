@@ -1,141 +1,142 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-
-function Login() {
-  const [email, setEmail] = React.useState('')
-  const [password, setPassword] = React.useState('')
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState(null)
+import { motion } from 'framer-motion'
+import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
+function LoginPage() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
+    setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.message || 'Login gagal. Silakan coba lagi.')
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.message || 'Login gagal. Periksa email dan password.')
       }
-      console.log('Login berhasil:', data.user)
-      console.log('Token:', data.token)
-      localStorage.setItem('authToken', data.token)
-      localStorage.setItem('userData', JSON.stringify(data.user))
       navigate('/')
     } catch (err) {
       setError(err.message)
-    } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-white to-red-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="bg-white p-10 rounded-lg shadow-xl border border-gray-200">
-          <div className="text-center">
-            <h2 className="text-4xl font-extrabold text-red-800">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-6">
+      <div className="flex flex-col lg:flex-row w-full max-w-6xl mx-auto shadow-2xl rounded-xl overflow-hidden">
+        <motion.div
+          className="hidden lg:block lg:w-1/2 bg-cover bg-center"
+          style={{ backgroundImage: "url('https://placehold.co/800x1000/ef4444/3b82f6?text=Marketplaceku&font=inter')" }}
+          initial={{ opacity: 0, x: -100 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
+        <motion.div
+          className="w-full lg:w-1/2 bg-white p-12 sm:p-16"
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <h1 className="text-4xl font-bold text-red-800 text-center">
               Selamat Datang Kembali
-            </h2>
-            <p className="mt-2 text-lg text-gray-600">
-              Masuk ke akun Marketplaceku Anda
+            </h1>
+            <p className="text-lg text-gray-600 text-center mt-3">
+              Login untuk melanjutkan ke Marketplaceku.
             </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <input type="hidden" name="remember" defaultValue="true" />
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label htmlFor="email-address" className="sr-only">
-                  Email
-                </label>
-                <input
-                  id="email-address"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-lg"
-                  placeholder="Alamat Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="sr-only">
-                  Kata Sandi
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 text-lg"
-                  placeholder="Kata Sandi"
-                  value={password}
-                  onChange={(e) => setPassword(e.g)}
-                />
-              </div>
-            </div>
+          </motion.div>
+          <form onSubmit={handleSubmit} className="mt-10 space-y-6">
             {error && (
-              <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-                <p>{error}</p>
-              </div>
+              <motion.div
+                className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <AlertCircle className="w-5 h-5" />
+                <span>{error}</span>
+              </motion.div>
             )}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label
-                  htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-900"
-                >
-                  Ingat saya
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a
-                  href="#" 
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
-                  Lupa kata sandi?
-                </a>
-              </div>
-            </div>
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-lg font-bold rounded-md text-white bg-red-800 hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:bg-gray-400"
-              >
-                {loading ? 'Sedang memproses...' : 'Masuk'}
-              </button>
-            </div>
-          </form>
-          <div className="mt-6 text-center">
-            <p className="text-md text-gray-600">
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+                Email
+              </label>
+              <Mail className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                placeholder="nama@email.com"
+              />
+            </motion.div>
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
+                Password
+              </label>
+              <Lock className="absolute left-3 top-10 w-5 h-5 text-gray-400" />
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+                placeholder="••••••••"
+              />
+            </motion.div>
+            <motion.button
+              type="submit"
+              disabled={isLoading}
+              className="w-full mt-8 px-6 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center items-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+            >
+              {isLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                'Login'
+              )}
+            </motion.button>
+            <motion.p
+              className="text-center text-gray-600 mt-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+            >
               Belum punya akun?{' '}
-              <Link
-                to="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
-                Daftar di sini
+              <Link to="/register" className="font-semibold text-blue-600 hover:underline">
+                Daftar Sekarang
               </Link>
-            </p>
-          </div>
-        </div>
+            </motion.p>
+          </form>
+        </motion.div>
       </div>
     </div>
   )
 }
-export default Login
+export default LoginPage
+

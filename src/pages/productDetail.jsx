@@ -1,248 +1,284 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ShoppingCart, Plus, Minus, CheckCircle, AlertCircle, Loader2, Store, ChevronLeft } from 'lucide-react'
 const MOCK_PRODUCT = {
-  id: 123,
-  title: 'Nama Produk yang Cukup Panjang dan Deskriptif',
-  description: `Ini adalah deskripsi lengkap produk. 
-Paragraf pertama menjelaskan keunggulan utama.
-
-Fitur Utama:
-- Fitur A
-- Fitur B
-- Fitur C
-
-Paragraf terakhir menjelaskan tentang garansi atau layanan purna jual.`,
-  store: { id: 101, name: 'Toko Resmi Bax Digital', slug: 'toko-resmi-bax-digital' },
+  id: 'prod-001',
+  title: 'Nama Produk Premium yang Cukup Panjang',
+  storeName: "Toko Resmi Bax Digital",
+  storeSlug: "bax-digital-store",
   images: [
-    'https://placehold.co/600x600/ef4444/white?text=Gambar+Produk+1',
+    'https://placehold.co/600x600/ef4444/white?text=Gambar+1',
     'https://placehold.co/600x600/3b82f6/white?text=Gambar+2',
-    'https://placehold.co/600x600/ef4444/white?text=Gambar+3',
-    'https://placehold.co/600x600/3b82f6/white?text=Gambar+4',
+    'https://placehold.co/600x600/16a34a/white?text=Gambar+3',
   ],
+  description: "Ini adalah deskripsi produk yang sangat mendetail. Menjelaskan semua fitur unggulan, bahan yang digunakan, serta manfaat yang akan didapat oleh pelanggan. Dibuat dengan material terbaik untuk daya tahan maksimal dan kenyamanan pengguna.",
   variants: [
-    { id: 1, name: 'Merah Maroon', price: 299000, stock: 50, sku: 'BD-PRO-001-RED' },
-    { id: 2, name: 'Biru Navy', price: 299000, stock: 30, sku: 'BD-PRO-001-BLUE' },
-    { id: 3, name: 'Hitam (Stok Habis)', price: 299000, stock: 0, sku: 'BD-PRO-001-BLK' },
+    { id: 'var-001', name: 'Hitam', price: 499000, stock: 15 },
+    { id: 'var-002', name: 'Putih', price: 499000, stock: 10 },
+    { id: 'var-003', name: 'Merah Maroon', price: 510000, stock: 0 },
+    { id: 'var-004', name: 'Biru Navy', price: 510000, stock: 5 },
   ]
 }
-const MOCK_AUTH_USER = { 
-  id: 1,
-  token: 'dummy-token-ganti-nanti' 
+const MOCK_AUTH_USER = { userId: 'user-123', token: 'fake-token-xyz' }
+const galleryVariants = {
+  hidden: { opacity: 0, x: -100 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut" } }
 }
-function ProductDetail() {
+const infoVariants = {
+  hidden: { opacity: 0, x: 100 },
+  visible: { 
+    opacity: 1, 
+    x: 0, 
+    transition: { 
+      duration: 0.6, 
+      ease: "easeOut", 
+      staggerChildren: 0.1 
+    } 
+  }
+}
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0 }
+}
+function ProductDetailPage() {
   const { productId } = useParams()
   const navigate = useNavigate()
   const [product, setProduct] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [selectedImage, setSelectedImage] = useState(0)
+  const [selectedImage, setSelectedImage] = useState('')
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [quantity, setQuantity] = useState(1)
-  const [addingToCart, setAddingToCart] = useState(false)
-  const [feedbackMessage, setFeedbackMessage] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [notification, setNotification] = useState(null)
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    const fetchProduct = () => {
-      try {
-        console.log(`Fetching product with ID: ${productId}`)
-        if (!MOCK_PRODUCT) {
-          throw new Error('Produk tidak ditemukan')
-        }
-        setProduct(MOCK_PRODUCT)
-        const defaultVariant = MOCK_PRODUCT.variants.find(v => v.stock > 0)
-        setSelectedVariant(defaultVariant || MOCK_PRODUCT.variants[0])
-        setSelectedImage(0)
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-    const timer = setTimeout(fetchProduct, 500)
-    return () => clearTimeout(timer)
+    setIsLoading(true)
+    setApiError(null)
+    setTimeout(() => {
+      setProduct(MOCK_PRODUCT)
+      setSelectedImage(MOCK_PRODUCT.images[0])
+      const defaultVariant = MOCK_PRODUCT.variants.find(v => v.stock > 0) || MOCK_PRODUCT.variants[0]
+      setSelectedVariant(defaultVariant)
+      setIsLoading(false)
+    }, 1000)
   }, [productId])
-  const handleQuantityChange = (amount) => {
-    setQuantity(prevQty => {
-      const newQty = prevQty + amount
-      if (newQty < 1) return 1
-      if (selectedVariant && newQty > selectedVariant.stock) return selectedVariant.stock
-      return newQty
-    })
-  }
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
   const handleVariantSelect = (variant) => {
     setSelectedVariant(variant)
     setQuantity(1)
   }
+  const handleQuantity = (type) => {
+    if (type === 'inc' && quantity < selectedVariant.stock) {
+      setQuantity(quantity + 1)
+    } else if (type === 'dec' && quantity > 1) {
+      setQuantity(quantity - 1)
+    }
+  }
   const handleAddToCart = async () => {
-    if (!selectedVariant || selectedVariant.stock === 0) {
-      setFeedbackMessage({ type: 'error', text: 'Varian ini sedang habis.' })
+    if (!MOCK_AUTH_USER.userId) {
+      navigate('/login')
       return
     }
-    if (quantity > selectedVariant.stock) {
-      setFeedbackMessage({ type: 'error', text: `Stok tidak mencukupi (tersisa ${selectedVariant.stock}).` })
-      return
-    }
-    setAddingToCart(true)
-    setFeedbackMessage(null)
-    const payload = {
-      userId: MOCK_AUTH_USER.id,
-      productVariantId: selectedVariant.id,
-      quantity: quantity
-    }
+    setIsAddingToCart(true)
+    setApiError(null)
+    setNotification(null)
     try {
-      const token = MOCK_AUTH_USER.token
-      const response = await fetch('http://localhost:3000/api/cart', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.message || 'Gagal menambahkan ke keranjang')
+      const payload = {
+        userId: MOCK_AUTH_USER.userId,
+        productVariantId: selectedVariant.id,
+        quantity: quantity,
       }
-      setFeedbackMessage({ type: 'success', text: 'Berhasil ditambahkan ke keranjang!' })
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      setNotification(`${product.title} (${selectedVariant.name}) berhasil ditambah!`)
     } catch (err) {
-      setFeedbackMessage({ type: 'error', text: err.message })
+      setApiError('Gagal menambahkan ke keranjang. Coba lagi.')
     } finally {
-      setAddingToCart(false)
-      setTimeout(() => setFeedbackMessage(null), 3000)
+      setIsAddingToCart(false)
     }
   }
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Memuat detail produk...</p></div>
-  }
-  if (error) {
-    return <div className="min-h-screen flex items-center justify-center text-red-600"><p>{error}</p></div>
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[80vh]">
+        <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
+      </div>
+    )
   }
   if (!product) {
-    return <div className="min-h-screen flex items-center justify-center"><p>Produk tidak ditemukan.</p></div>
+    return (
+      <div className="flex flex-col justify-center items-center min-h-[80vh] text-center px-6">
+        <AlertCircle className="w-20 h-20 text-red-500 mb-6" />
+        <h1 className="text-4xl font-bold text-red-800 mb-4">Produk Tidak Ditemukan</h1>
+        <p className="text-xl text-gray-600 mb-8">Produk yang Anda cari mungkin telah dihapus atau tidak tersedia.</p>
+        <Link
+          to="/products"
+          className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition-all"
+        >
+          Lihat Produk Lain
+        </Link>
+      </div>
+    )
   }
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white shadow-xl rounded-lg border border-gray-200 p-6 md:p-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 lg:gap-16">
-            <div>
-              <div className="aspect-w-1 aspect-h-1 mb-4 overflow-hidden rounded-lg shadow-md">
-                <img 
-                  src={product.images[selectedImage]} 
-                  alt={product.title} 
-                  className="w-full h-full object-cover"
+    <div className="bg-gray-50 min-h-screen py-16 px-6 overflow-x-hidden">
+      <motion.div 
+        className="container mx-auto max-w-7xl"
+        initial="hidden"
+        animate="visible"
+      >
+        <Link
+          to="/products"
+          className="inline-flex items-center gap-2 text-blue-600 font-semibold hover:underline mb-6"
+        >
+          <ChevronLeft className="w-5 h-5" />
+          Kembali ke Semua Produk
+        </Link>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <motion.div variants={galleryVariants} className="flex flex-col gap-5">
+            <div className="bg-white rounded-lg shadow-xl overflow-hidden sticky top-24">
+              <motion.img
+                key={selectedImage}
+                src={selectedImage}
+                alt="Produk Utama"
+                className="w-full h-auto aspect-square object-cover"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <div className="flex gap-4">
+              {product.images.map((img, idx) => (
+                <motion.img
+                  key={idx}
+                  src={img}
+                  alt={`Thumbnail ${idx + 1}`}
+                  onClick={() => setSelectedImage(img)}
+                  className={`w-1/4 rounded-lg cursor-pointer border-2 transition-all ${
+                    selectedImage === img ? 'border-blue-600 shadow-md' : 'border-gray-200 hover:border-gray-400'
+                  }`}
+                  whileHover={{ scale: 1.05 }}
                 />
-              </div>
-              <div className="flex space-x-2 overflow-x-auto p-1">
-                {product.images.map((img, index) => (
-                  <button 
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all ${selectedImage === index ? 'border-blue-600 shadow' : 'border-transparent hover:border-gray-300'}`}
+              ))}
+            </div>
+          </motion.div>
+          <motion.div variants={infoVariants} className="flex flex-col space-y-7">
+            <motion.div variants={itemVariants}>
+              <Link to={`/store/${product.storeSlug}`} className="inline-flex items-center gap-2 text-gray-600 font-medium hover:text-blue-600">
+                <Store className="w-5 h-5" />
+                {product.storeName}
+              </Link>
+            </motion.div>
+            <motion.h1 variants={itemVariants} className="text-5xl font-bold text-red-800">
+              {product.title}
+            </motion.h1>
+            <motion.p variants={itemVariants} className="text-4xl font-light text-gray-900">
+              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(selectedVariant.price)}
+            </motion.p>
+            <motion.div variants={itemVariants} className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Pilih Varian: <span className="font-bold text-blue-600">{selectedVariant.name}</span>
+              </h3>
+              <div className="flex flex-wrap gap-3">
+                {product.variants.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => handleVariantSelect(v)}
+                    disabled={v.stock === 0}
+                    className={`px-5 py-2 rounded-full border-2 font-medium transition-all ${
+                      selectedVariant.id === v.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100'
+                    } ${
+                      v.stock === 0 ? 'bg-gray-100 text-gray-400 line-through cursor-not-allowed' : ''
+                    }`}
                   >
-                    <img src={img} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                    {v.name}
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="flex flex-col space-y-6">
-              <div>
-                <Link to={`/store/${product.store.slug}`} className="text-lg font-medium text-blue-600 hover:underline">
-                  {product.store.name}
-                </Link>
-                <h1 className="text-4xl font-extrabold text-red-800 mt-1">
-                  {product.title}
-                </h1>
-              </div>
-              <div className="text-4xl font-bold text-gray-900">
-                {formatCurrency(selectedVariant ? selectedVariant.price : product.variants[0].price)}
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Pilih Varian: <span className="font-semibold">{selectedVariant?.name}</span></h3>
-                <div className="flex flex-wrap gap-3">
-                  {product.variants.map(variant => (
-                    <button
-                      key={variant.id}
-                      onClick={() => handleVariantSelect(variant)}
-                      disabled={variant.stock === 0}
-                      className={`
-                        px-4 py-2 border rounded-lg font-medium transition-all
-                        ${selectedVariant?.id === variant.id 
-                          ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-300' 
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}
-                        ${variant.stock === 0 ? 'bg-gray-100 text-gray-400 line-through cursor-not-allowed' : ''}
-                      `}
-                    >
-                      {variant.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Jumlah</h3>
-                <div className="flex items-center border border-gray-300 rounded-lg max-w-[150px]">
-                  <button 
-                    onClick={() => handleQuantityChange(-1)}
-                    disabled={!selectedVariant || selectedVariant.stock === 0}
-                    className="px-4 py-2 text-xl font-bold text-gray-600 hover:bg-gray-100 rounded-l-lg disabled:bg-gray-50 disabled:cursor-not-allowed"
+            </motion.div>
+            <motion.div variants={itemVariants} className="bg-white p-6 rounded-lg shadow-lg">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-800">Jumlah</h3>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => handleQuantity('dec')}
+                    disabled={quantity <= 1}
+                    className="p-2 rounded-full bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
                   >
-                    -
+                    <Minus className="w-5 h-5" />
                   </button>
-                  <input 
-                    type="text" 
-                    readOnly
-                    value={quantity} 
-                    className="w-full text-center border-l border-r border-gray-300 py-2 focus:outline-none"
-                  />
-                  <button 
-                    onClick={() => handleQuantityChange(1)}
-                    disabled={!selectedVariant || selectedVariant.stock === 0}
-                    className="px-4 py-2 text-xl font-bold text-gray-600 hover:bg-gray-100 rounded-r-lg disabled:bg-gray-50 disabled:cursor-not-allowed"
+                  <span className="text-xl font-bold w-10 text-center">{quantity}</span>
+                  <button
+                    onClick={() => handleQuantity('inc')}
+                    disabled={quantity >= selectedVariant.stock}
+                    className="p-2 rounded-full bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50"
                   >
-                    +
+                    <Plus className="w-5 h-5" />
                   </button>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Stok tersisa: {selectedVariant?.stock || 0}
-                </p>
+                <span className="text-md text-gray-600">
+                  Stok: {selectedVariant.stock}
+                </span>
               </div>
-              <div className="space-y-4">
-                {feedbackMessage && (
-                  <div className={`p-3 rounded-lg text-center ${feedbackMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {feedbackMessage.text}
-                  </div>
-                )}
-                <button
-                  onClick={handleAddToCart}
-                  disabled={addingToCart || !selectedVariant || selectedVariant.stock === 0}
-                  className="w-full flex items-center justify-center px-6 py-4 bg-red-800 text-white text-lg font-bold rounded-lg shadow-lg hover:bg-red-900 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+            </motion.div>
+            <motion.button
+              variants={itemVariants}
+              onClick={handleAddToCart}
+              disabled={isAddingToCart || selectedVariant.stock === 0}
+              className="w-full px-6 py-5 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed flex justify-center items-center gap-3"
+            >
+              {isAddingToCart ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : (
+                <ShoppingCart className="w-6 h-6" />
+              )}
+              {isAddingToCart ? 'Menambahkan...' : (selectedVariant.stock === 0 ? 'Stok Habis' : 'Tambah ke Keranjang')}
+            </motion.button>
+            <AnimatePresence>
+              {apiError && (
+                <motion.div
+                  className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 mr-2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.121.001.24.015.358.043a4.5 4.5 0 0 1 4.162 4.162l-.002 1.168a2.25 2.25 0 0 1-2.247 2.247H5.25a2.25 2.25 0 0 1-2.247-2.247L3.003 3.5H3.75M16.5 18a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                  </svg>
-                  {addingToCart ? 'Menambahkan...' : (!selectedVariant || selectedVariant.stock === 0 ? 'Stok Habis' : 'Tambah ke Keranjang')}
-                </button>
-              </div>
-              <div className="border-t pt-6">
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">Deskripsi Produk</h3>
-                <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                  {product.description}
-                </p>
-              </div>
-            </div>
-          </div>
+                  <AlertCircle className="w-5 h-5" />
+                  <span>{apiError}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <motion.div variants={itemVariants} className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-3 mb-4">
+                Deskripsi Produk
+              </h3>
+              <p className="text-gray-700 leading-relaxed">
+                {product.description}
+              </p>
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            className="fixed bottom-10 right-10 bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 z-50"
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+          >
+            <CheckCircle className="w-6 h-6" />
+            <span>{notification}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
-export default ProductDetail
+export default ProductDetailPage
 
